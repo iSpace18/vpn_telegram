@@ -1,0 +1,1 @@
+from bot.handlers import start, payment, profile, referral, support, admin, faq

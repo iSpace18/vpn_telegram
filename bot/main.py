@@ -12,7 +12,7 @@ from bot.utils.db import engine
 from bot.models import Base
 from bot.middlewares.database import DBSessionMiddleware
 
-from bot.handlers import start, payment, profile, referral, support, admin
+from bot.handlers import start, payment, profile, referral, support, admin, faq
 
 async def on_startup(bot: Bot):
     async with engine.begin() as conn:
@@ -37,6 +37,7 @@ async def main():
     dp.include_router(referral.router)
     dp.include_router(support.router)
     dp.include_router(admin.router)
+    dp.include_router(faq.router)
 
     dp.startup.register(on_startup)
 

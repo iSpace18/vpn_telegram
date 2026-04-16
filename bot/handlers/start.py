@@ -4,6 +4,7 @@ from aiogram.filters import CommandStart
 from sqlalchemy.ext.asyncio import AsyncSession
 from bot.keyboards.main import main_menu_keyboard
 from bot.services.referral_service import get_or_create_user
+from bot.services.plan_service import ensure_default_plans
 
 router = Router()
 
@@ -13,6 +14,9 @@ async def cmd_start(message: Message, db_session: AsyncSession):
     referrer_code = None
     if len(args) > 1 and args[1].startswith("ref"):
         referrer_code = args[1][3:]
+
+    # Убедимся, что тарифы созданы
+    await ensure_default_plans(db_session)
 
     user = await get_or_create_user(
         db_session,

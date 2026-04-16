@@ -1,4 +1,5 @@
 import aiohttp
+import ssl
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 from bot.config import settings
@@ -15,7 +16,12 @@ class VPNService:
     async def _request(self, method: str, endpoint: str, **kwargs) -> Dict[str, Any]:
         url = f"{self.base_url}/api{endpoint}"
         auth = await self._get_auth()
-        async with aiohttp.ClientSession() as session:
+        # Создаём контекст SSL, который не проверяет сертификат
+        ssl_context = ssl.create_default_context()
+        ssl_context.check_hostname = False
+        ssl_context.verify_mode = ssl.CERT_NONE
+        connector = aiohttp.TCPConnector(ssl=ssl_context)
+        async with aiohttp.ClientSession(connector=connector) as session:
             async with session.request(method, url, auth=auth, **kwargs) as resp:
                 resp.raise_for_status()
                 return await resp.json()

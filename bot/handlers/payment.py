@@ -8,6 +8,7 @@ from bot.models import User, Plan, VPNKey, Payment, PaymentMethod, TrialUsage
 from bot.services.vpn_service import VPNService
 from bot.services.payment_service import send_stars_invoice, create_yookassa_payment, check_yookassa_payment
 from bot.keyboards.main import plans_keyboard, back_to_main_inline
+from bot.services.plan_service import ensure_default_plans
 from bot.config import settings
 
 router = Router()
@@ -15,6 +16,7 @@ vpn_service = VPNService()
 
 @router.message(F.text == "💳 Купить подписку")
 async def show_plans(message: Message, db_session: AsyncSession):
+    await ensure_default_plans(db_session)
     plans = (await db_session.execute(select(Plan).where(Plan.is_active == True))).scalars().all()
     if not plans:
         await message.answer("Нет доступных тарифов.")
@@ -29,7 +31,6 @@ async def process_buy_plan(callback: CallbackQuery, db_session: AsyncSession):
         await callback.answer("Тариф не найден.", show_alert=True)
         return
 
-    # Выбор способа оплаты
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="💎 Оплатить Telegram Stars", callback_data=f"pay_stars:{plan_id}")],
     ])
@@ -57,7 +58,6 @@ async def pay_stars(callback: CallbackQuery, db_session: AsyncSession, bot: Bot)
     plan_id = int(callback.data.split(":")[1])
     plan = await db_session.get(Plan, plan_id)
     user = await db_session.scalar(select(User).where(User.telegram_id == callback.from_user.id))
-
     payload = f"plan_{plan.id}_{user.telegram_id}_{uuid.uuid4()}"
     await send_stars_invoice(bot, callback.message.chat.id, plan, payload)
     await callback.answer()
@@ -106,7 +106,6 @@ async def check_yookassa(callback: CallbackQuery, db_session: AsyncSession, bot:
         payment.status = "succeeded"
         payment.paid_at = datetime.utcnow()
         await db_session.commit()
-        # Выдача ключа
         await grant_vpn_key(callback.message, db_session, payment.user_id, payment.plan_id)
     elif status == "pending":
         await callback.answer("Оплата ещё не прошла", show_alert=True)
