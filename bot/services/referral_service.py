@@ -1,6 +1,6 @@
 import secrets
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 from bot.models import User, ReferralBonus
 from bot.config import settings
 
@@ -18,16 +18,15 @@ async def get_or_create_user(
         select(User).where(User.telegram_id == telegram_id)
     )
     user = result.scalar_one_or_none()
-    
+
     if user is None:
-        # Находим реферера по коду
         referrer = None
         if referrer_code:
             result = await session.execute(
                 select(User).where(User.referral_code == referrer_code)
             )
             referrer = result.scalar_one_or_none()
-        
+
         user = User(
             telegram_id=telegram_id,
             username=username,
@@ -38,10 +37,9 @@ async def get_or_create_user(
         session.add(user)
         await session.commit()
         await session.refresh(user)
-        
-        # Начисляем бонус рефереру
+
         if referrer:
-            bonus_amount = settings.REFERRAL_BONUS_PERCENT  # или расчет от чего-то
+            bonus_amount = settings.REFERRAL_BONUS_PERCENT
             referrer.bonus_balance += bonus_amount
             bonus = ReferralBonus(
                 referrer_id=referrer.id,
@@ -50,16 +48,17 @@ async def get_or_create_user(
             )
             session.add(bonus)
             await session.commit()
-    
+
     return user
 
-async def get_referral_stats(session: AsyncSession, user: User) -> dict:
+async def get_referral_stats(session: AsyncSession, user: User, bot) -> dict:
     referrals_count = await session.scalar(
         select(func.count()).select_from(User).where(User.referrer_id == user.id)
     )
+    bot_info = await bot.get_me()
     return {
         "referral_code": user.referral_code,
-        "referral_link": f"https://t.me/{(await bot.get_me()).username}?start={user.referral_code}",
+        "referral_link": f"https://t.me/{bot_info.username}?start={user.referral_code}",
         "referrals_count": referrals_count,
         "bonus_balance": user.bonus_balance,
     }

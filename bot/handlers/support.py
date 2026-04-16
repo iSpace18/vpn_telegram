@@ -13,4 +13,4 @@ async def support_handler(message: Message):
         f"Свяжитесь с администратором: <a href='tg://user?id={admin_id}'>Написать</a>\n\n"
         "Опишите вашу проблему, приложите скриншоты."
     )
-    await message.answer(text, parse_mode="HTML")
+    await message.answer(text, parse_mode="HTML", reply_markup=back_to_main_inline())

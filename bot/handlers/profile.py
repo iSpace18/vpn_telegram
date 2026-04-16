@@ -14,20 +14,20 @@ async def profile_menu(message: Message, db_session: AsyncSession):
     if not user:
         await message.answer("Пользователь не найден.")
         return
-    
-    active_keys_count = await db_session.scalar(
+
+    active_keys = await db_session.scalar(
         select(func.count()).select_from(VPNKey).where(
             VPNKey.user_id == user.id,
             VPNKey.is_active == True,
             VPNKey.expiry_date > func.now()
         )
     )
-    
+
     text = (
         f"👤 <b>Профиль</b>\n"
         f"🆔 ID: <code>{user.telegram_id}</code>\n"
         f"📅 Регистрация: {user.registered_at.strftime('%d.%m.%Y')}\n"
-        f"🔑 Активных ключей: {active_keys_count}\n"
+        f"🔑 Активных ключей: {active_keys}\n"
         f"💰 Бонусный баланс: {user.bonus_balance} ⭐\n"
     )
     await message.answer(text, parse_mode="HTML", reply_markup=profile_keyboard())
@@ -38,12 +38,12 @@ async def show_my_keys(callback: CallbackQuery, db_session: AsyncSession):
     keys = (await db_session.execute(
         select(VPNKey).where(VPNKey.user_id == user.id).order_by(VPNKey.created_at.desc())
     )).scalars().all()
-    
+
     if not keys:
         await callback.message.answer("У вас пока нет ключей.", reply_markup=back_to_main_inline())
         await callback.answer()
         return
-    
+
     text = "🔑 <b>Ваши ключи:</b>\n\n"
     for key in keys:
         status = "✅" if key.is_active and key.expiry_date > func.now() else "❌"
@@ -51,6 +51,6 @@ async def show_my_keys(callback: CallbackQuery, db_session: AsyncSession):
         if key.key_data:
             text += f"Ссылка: <code>{key.key_data}</code>\n"
         text += "\n"
-    
+
     await callback.message.answer(text, parse_mode="HTML", reply_markup=back_to_main_inline())
     await callback.answer()

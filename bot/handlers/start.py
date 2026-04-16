@@ -1,25 +1,19 @@
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
-from aiogram.filters import CommandStart, Command
-from aiogram.utils.deep_linking import decode_payload
+from aiogram.filters import CommandStart
 from sqlalchemy.ext.asyncio import AsyncSession
 from bot.keyboards.main import main_menu_keyboard
 from bot.services.referral_service import get_or_create_user
-from bot.config import settings
-from bot.models import Plan
 
 router = Router()
 
 @router.message(CommandStart())
 async def cmd_start(message: Message, db_session: AsyncSession):
-    # Обработка реферальной ссылки
     args = message.text.split()
     referrer_code = None
-    if len(args) > 1:
-        payload = args[1]
-        if payload.startswith("ref"):
-            referrer_code = payload[3:]  # убираем "ref"
-    
+    if len(args) > 1 and args[1].startswith("ref"):
+        referrer_code = args[1][3:]
+
     user = await get_or_create_user(
         db_session,
         message.from_user.id,
@@ -27,7 +21,7 @@ async def cmd_start(message: Message, db_session: AsyncSession):
         message.from_user.full_name,
         referrer_code
     )
-    
+
     await message.answer(
         f"👋 Добро пожаловать, {message.from_user.full_name}!\n"
         "Я бот для продажи доступа к VPN. Выберите действие в меню.",
@@ -36,12 +30,9 @@ async def cmd_start(message: Message, db_session: AsyncSession):
 
 @router.callback_query(F.data == "back_to_main")
 async def back_to_main(callback: CallbackQuery):
-    await callback.message.edit_text(
-        "Главное меню:",
-        reply_markup=None
-    )
+    await callback.message.delete()
     await callback.message.answer(
-        "Выберите действие:",
+        "Главное меню:",
         reply_markup=main_menu_keyboard()
     )
     await callback.answer()
