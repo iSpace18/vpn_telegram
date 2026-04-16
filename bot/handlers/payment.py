@@ -63,7 +63,7 @@ async def pay_stars(callback: CallbackQuery, db_session: AsyncSession, bot: Bot)
     await callback.answer()
 
 @router.callback_query(F.data.startswith("pay_yookassa:"))
-async def pay_yookassa(callback: CallbackQuery, db_session: AsyncSession):
+async def pay_yookassa(callback: CallbackQuery, db_session: AsyncSession, bot: Bot):
     plan_id = int(callback.data.split(":")[1])
     plan = await db_session.get(Plan, plan_id)
     user = await db_session.scalar(select(User).where(User.telegram_id == callback.from_user.id))
