@@ -8,3 +8,4 @@ pydantic==2.8.2
 pydantic-settings==2.5.2
 python-dotenv==1.0.1
 aiosqlite==0.20.0
+yookassa==3.0.0

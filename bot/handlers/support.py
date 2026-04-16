@@ -7,14 +7,10 @@ router = Router()
 
 @router.message(F.text == "📞 Поддержка")
 async def support_handler(message: Message):
-    admin_usernames = []
-    for admin_id in settings.ADMIN_IDS:
-        # Получение username администраторов можно сделать через get_chat
-        admin_usernames.append(f"@{admin_id}")  # упрощенно
+    admin_id = settings.ADMIN_IDS[0]
     text = (
         "📞 <b>Поддержка</b>\n\n"
-        "Если у вас возникли вопросы или проблемы, свяжитесь с администратором:\n"
-        f"{', '.join(admin_usernames)}\n\n"
+        f"Свяжитесь с администратором: <a href='tg://user?id={admin_id}'>Написать</a>\n\n"
         "Опишите вашу проблему, приложите скриншоты."
     )
-    await message.answer(text, parse_mode="HTML", reply_markup=back_to_main_inline())
+    await message.answer(text, parse_mode="HTML")

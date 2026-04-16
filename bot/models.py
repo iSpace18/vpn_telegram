@@ -1,7 +1,8 @@
-from sqlalchemy import Column, Integer, BigInteger, String, Boolean, DateTime, ForeignKey, Text, Float
+from sqlalchemy import Column, Integer, BigInteger, String, Boolean, DateTime, ForeignKey, Text, Float, Enum
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
+import enum
 
 Base = declarative_base()
 
@@ -16,46 +17,72 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     is_admin = Column(Boolean, default=False)
     
-    # Referral system
     referrer_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     referral_code = Column(String, unique=True, index=True)
-    bonus_balance = Column(Integer, default=0)  # в звездах (или внутренней валюте)
+    bonus_balance = Column(Integer, default=0)  # в рублях (или звездах)
     
-    # Relations
+    trial_used = Column(Boolean, default=False)  # использовал ли пробный период
+    
     referrer = relationship("User", remote_side=[id], backref="referrals")
     vpn_keys = relationship("VPNKey", back_populates="user", lazy="dynamic")
-    
+
 class Plan(Base):
     __tablename__ = "plans"
     
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False)
     description = Column(Text, nullable=True)
-    price_stars = Column(Integer, nullable=False)  # цена в Telegram Stars
+    price_stars = Column(Integer, nullable=True)   # цена в Telegram Stars (может быть NULL, если только за рубли)
+    price_rub = Column(Integer, nullable=True)     # цена в рублях (для ЮKassa)
     duration_days = Column(Integer, nullable=False)
-    traffic_limit_gb = Column(Integer, nullable=True)  # None = безлимит
+    traffic_limit_gb = Column(Integer, nullable=True)
     is_active = Column(Boolean, default=True)
+
+class PaymentMethod(str, enum.Enum):
+    STARS = "stars"
+    YOOKASSA = "yookassa"
+
+class Payment(Base):
+    __tablename__ = "payments"
     
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    plan_id = Column(Integer, ForeignKey("plans.id"), nullable=True)
+    amount = Column(Float, nullable=False)
+    currency = Column(String, default="RUB")
+    method = Column(Enum(PaymentMethod), nullable=False)
+    status = Column(String, default="pending")  # pending, succeeded, canceled
+    payment_id = Column(String, unique=True)    # ID платежа в платёжной системе
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    paid_at = Column(DateTime(timezone=True), nullable=True)
+
 class VPNKey(Base):
     __tablename__ = "vpn_keys"
     
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     plan_id = Column(Integer, ForeignKey("plans.id"), nullable=True)
-    key_uuid = Column(String, unique=True, nullable=False)  # UUID ключа в панели
-    key_data = Column(Text, nullable=True)  # ссылка/конфиг
+    key_uuid = Column(String, unique=True, nullable=False)
+    key_data = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     expiry_date = Column(DateTime(timezone=True), nullable=False)
     is_active = Column(Boolean, default=True)
     
     user = relationship("User", back_populates="vpn_keys")
     plan = relationship("Plan")
-    
+
 class ReferralBonus(Base):
     __tablename__ = "referral_bonuses"
     
     id = Column(Integer, primary_key=True)
     referrer_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     referred_user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    amount = Column(Integer, nullable=False)  # количество звезд
+    amount = Column(Integer, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class TrialUsage(Base):
+    __tablename__ = "trial_usage"
+    
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    used_at = Column(DateTime(timezone=True), server_default=func.now())

@@ -1,22 +1,23 @@
 from pydantic_settings import BaseSettings
 from pydantic import field_validator
-from typing import List
+from typing import List, Optional
 
 class Settings(BaseSettings):
     BOT_TOKEN: str
     ADMIN_IDS: List[int]
     DATABASE_URL: str = "sqlite+aiosqlite:///data/bot.db"
     
-    # VPN Panel settings (Marzban)
     VPN_PANEL_URL: str
     VPN_PANEL_USERNAME: str
     VPN_PANEL_PASSWORD: str
     
-    TRIAL_DAYS: int = 1
+    TRIAL_DAYS: int = 3
     REFERRAL_BONUS_PERCENT: int = 15
     
-    # Webhook (optional)
-    WEBHOOK_URL: str | None = None
+    YOOKASSA_SHOP_ID: Optional[str] = None
+    YOOKASSA_SECRET_KEY: Optional[str] = None
+    
+    WEBHOOK_URL: Optional[str] = None
     WEBHOOK_PORT: int = 8443
     
     @field_validator("ADMIN_IDS", mode="before")
